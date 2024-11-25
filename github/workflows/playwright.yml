@@ -1,0 +1,39 @@
+# .github/workflows/playwright.yml
+
+name: Playwright Tests
+
+on:
+  push:
+    branches: [main] # Runs tests on push to the main branch
+  pull_request:
+    branches: [main] # Runs tests for pull requests to the main branch
+
+jobs:
+  test:
+    runs-on: ubuntu-latest # Use the latest version of Ubuntu as the runner
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3 # Checkout the repository code
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '16' # Specify the Node.js version
+
+      - name: Install dependencies
+        run: npm install # Install dependencies from package.json
+
+      - name: Run Playwright tests
+        run: npx playwright test # Run Playwright tests
+        env:
+          APP_URL: ${{ secrets.APP_URL }} # Load environment variables as GitHub secrets
+          USERNAME: ${{ secrets.USERNAME }}
+          PASSWORD: ${{ secrets.PASSWORD }}
+
+      - name: Upload Playwright report
+        if: failure() # Upload report only if tests fail
+        uses: actions/upload-artifact@v3
+        with:
+          name: playwright-report
+          path: playwright-report # Playwright's default report directory

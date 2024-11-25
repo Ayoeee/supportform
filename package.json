@@ -1,0 +1,19 @@
+{
+  "name": "playwright-pom-framework",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "debugMode": "npx playwright test --debug"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "playwright": "^1.48.1"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.48.1"
+  }
+}
