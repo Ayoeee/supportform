@@ -1,5 +1,4 @@
 name: Admin Dashboard Tests
-
 on:
   push:
     branches: [main]
