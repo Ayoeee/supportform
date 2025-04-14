@@ -36,3 +36,5 @@ PASSWORD=yourPassword             # Replace with actual password
 npx playwright install
 
 npx playwright test
+
+npx playwright test tests/03_search.spec.js --debug (Debug mode for a specific test)

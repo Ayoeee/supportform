@@ -6,6 +6,7 @@ class SearchPage {
     this.patientNameInputField = page.locator('input[name="patient-name"]')
     this.searchBtn = page.getByRole('button', { name: 'Search' })
     this.petNameCell = page.locator('[data-test="table-row"]')
+   
     this.elements = [
       {
         name: 'Client Information Header',
@@ -62,6 +63,13 @@ class SearchPage {
     await this.clientNameInputField.fill(clientName)
     await this.searchBtn.click()
     await this.petNameCell.click()
+  }
+
+  async searchForAssociateViaPatientNameForMessageInitiation(patientName) {
+    await this.searchInputField.click()
+    await this.patientNameInputField.fill(patientName)
+    await this.searchBtn.click()
+    await this.messageClientBtn.click()
   }
 
   async verifyClientInformationDisplays() {

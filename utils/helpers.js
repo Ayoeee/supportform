@@ -1,7 +1,7 @@
-// utils/helpers.js
 const { chromium } = require('@playwright/test')
 require('dotenv').config()
 
+// Function to log in a user
 async function loginUser() {
   // Launch the browser in headful mode for debugging
   const browser = await chromium.launch({ headless: false })
@@ -28,4 +28,17 @@ async function loginUser() {
   return { browser, context, page }
 }
 
-module.exports = { loginUser }
+// Function to generate random text
+function generateRandomText(length = 10) {
+  const characters =
+    'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'
+  let randomText = ''
+  for (let i = 0; i < length; i++) {
+    randomText += characters.charAt(
+      Math.floor(Math.random() * characters.length)
+    )
+  }
+  return randomText
+}
+
+module.exports = { loginUser, generateRandomText }

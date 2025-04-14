@@ -1,4 +1,3 @@
-
 const { expect } = require('@playwright/test')
 class LoginPage {
   constructor(page) {
@@ -24,7 +23,9 @@ class LoginPage {
   }
 
   async verifyLoginSuccess() {
-    await expect(this.page).toHaveURL('https://flex.twilio.com/agent-desktop')
+    await expect(this.page).toHaveURL(
+      'https://flex.twilio.com/agent-desktop?ssoProfileSid=JQ3cca563ce4d2f62b890879d4405933cd'
+    )
   }
 }
 

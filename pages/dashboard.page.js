@@ -10,7 +10,7 @@ class DashboardPage {
         name: 'Search Link',
         locator: page.getByRole('link', { name: 'Search' }),
       },
-      { name: 'Hamburger Menu', locator: page.getByRole('paragraph') },
+      { name: 'Hamburger Menu', locator: page.getByLabel('Navigation') },
       { name: 'Message Module', locator: page.getByText('Messages') },
       {
         name: 'All tasks Filter',
@@ -31,7 +31,7 @@ class DashboardPage {
 
   async verifyDashboardElements() {
     for (const element of this.elements) {
-      await expect(element.locator).toBeVisible() 
+      await expect(element.locator).toBeVisible()
       console.log(`${element.name} is visible.`)
     }
     console.log('All dashboard elements are visible.')

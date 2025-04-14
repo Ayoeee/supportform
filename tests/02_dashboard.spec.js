@@ -1,15 +1,10 @@
+require('dotenv').config() // ✅ Load .env variables
 const { test } = require('@playwright/test')
-const { loginUser } = require('../utils/helpers')
-const DashboardPage = require('../pages/dashboard.page')
+const { dashboardViewActions } = require('../utils/actions/dashboardActions') // ✅ Import dashboardViewActions
 
-test.describe('Verify Default Dashboard items are shown', () => {
-  test('should check for some dashboard items after login', async () => {
-    // Login using the helper
-    const { browser, page } = await loginUser()
+const BASE_URL = process.env.BASE_URL // ✅ Get Base URL from .env
 
-    const dashboardPage = new DashboardPage(page)
-    await dashboardPage.verifyDashboardElements()
-    // Close the browser
-    await browser.close()
-  })
+test('Verifying presence of dashboard home page items', async ({ page }) => {
+  await page.goto(`${BASE_URL}`)
+  await dashboardViewActions.executeDashboardViewTests(page) // ✅ Call dashboardViewActions
 })
