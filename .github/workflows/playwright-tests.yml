@@ -37,7 +37,7 @@ jobs:
           if [ ! -d "playwright-report" ]; then echo "❌ playwright-report directory not found"; exit 1; fi
           if [ ! -d "test-results" ]; then echo "ℹ️ test-results directory not found (might be no failures)"; fi
 
-           - name: 📤 Upload Playwright HTML report
+      - name: 📤 Upload Playwright HTML report
         if: always()
         uses: actions/upload-artifact@v3
         with:
