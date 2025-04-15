@@ -5,6 +5,7 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  workflow_dispatch: # ✅ Manual run trigger
 
 jobs:
   test:
@@ -39,14 +40,14 @@ jobs:
 
       - name: 📤 Upload Playwright HTML report
         if: always()
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@7c3b2592b694c4dbf0f7b0fd48678ee5cc5fd56c
         with:
           name: playwright-report
           path: playwright-report/
 
       - name: 📤 Upload screenshots, videos, and traces
         if: failure()
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@7c3b2592b694c4dbf0f7b0fd48678ee5cc5fd56c
         with:
           name: test-artifacts
           path: test-results/
