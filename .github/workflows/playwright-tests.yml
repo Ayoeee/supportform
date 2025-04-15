@@ -27,6 +27,9 @@ jobs:
       - name: Run Playwright tests
         run: npx playwright test
 
+      - name: Debug Playwright report
+        run: ls -al playwright-report
+
       - name: Upload Playwright test results
         if: failure()
         uses: actions/upload-artifact@v3
