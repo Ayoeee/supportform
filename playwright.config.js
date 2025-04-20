@@ -13,13 +13,12 @@ const config = {
   // ✅ Reporters: List + HTML + Allure
   reporter: [
     ['list'],
-    ['html', { outputFolder: 'test-results/html-report' }],
-    ['allure-playwright'],
+    ['html', { outputFolder: 'playwright-html-report', open: 'never' }],
   ],
 
   use: {
     baseURL: process.env.BASE_URL, // Base URL for the application
-    headless: false, // Run tests in headful mode (change to true for CI to save resources)
+    headless: process.env.CI ? true : false,
     viewport: { width: 1280, height: 720 }, // Default viewport size
     actionTimeout: 10_000, // Maximum time for each Playwright action
     navigationTimeout: 15_000, // Maximum time for navigation
