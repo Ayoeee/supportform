@@ -19,4 +19,5 @@ exports.dashboardLocators = {
   trainingdocumentsText: (page) => page.getByText('Training Documents'),
   commonQuestionsLink: (page) =>
     page.getByRole('link', { name: 'Common Questions' }),
+  adminToolsLink: (page) => page.getByRole('link', { name: 'Admin Tools' }),
 }

@@ -14,5 +14,6 @@ exports.dashboardViewActions = {
     await expect(dashboardLocators.trainingVideosText(page)).toBeVisible()
     await expect(dashboardLocators.trainingdocumentsText(page)).toBeVisible()
     await expect(dashboardLocators.commonQuestionsLink(page)).toBeVisible()
+    await expect(dashboardLocators.adminToolsLink(page)).toBeVisible()
   },
 }
