@@ -4,7 +4,6 @@ const {
 } = require('../locators/trainingResourcesLocators')
 const { test, expect } = require('@playwright/test')
 require('dotenv').config()
-const BASE_URL = process.env.BASE_URL
 
 exports.trainingResourcesActions = {
   async checkVideoResourcesVisibility(page) {
