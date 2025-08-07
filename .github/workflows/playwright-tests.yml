@@ -1,4 +1,4 @@
-name: Admin Tools Dashboard Regression Tests
+name: Support Form Regression Tests
 
 on:
   push:
