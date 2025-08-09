@@ -1,52 +1,131 @@
 const { dashboardLocators } = require('../locators/dashboardLocators')
 const { expect } = require('@playwright/test')
+const { execSync } = require('child_process')
 const email = 'automatedTest@test.com'
 const textInForm = 'This is an automated test for filling the support form.'
 
 exports.fillformActions = {
   async fillFormTests(page) {
-    await dashboardLocators.emailInputfield(page).fill(email)
-    // Step 1: Wait for dropdown trigger to be visible
-    const dropdownTrigger = page
-      .locator('div')
-      .filter({ hasText: /^Select your request type$/ })
-      .nth(2)
+    let width = 1440,
+      height = 900
+    try {
+      const m = execSync('system_profiler SPDisplaysDataType | grep Resolution')
+        .toString()
+        .match(/(\d+)\s*x\s*(\d+)/)
+      if (m) {
+        width = parseInt(m[1], 10)
+        height = parseInt(m[2], 10)
+      }
+    } catch {}
+    await page.setViewportSize({ width, height })
 
-    await expect(dropdownTrigger).toBeVisible({ timeout: 5000 })
+    // ---- Wait out overlays (tweak selector if your app uses a different mask) ----
+    await page
+      .locator('[data-loading-overlay], .loading-overlay, [aria-busy="true"]')
+      .first()
+      .waitFor({ state: 'detached', timeout: 3000 })
+      .catch(() => {}) // ignore if none
 
-    // Scroll into view if needed
-    await dropdownTrigger.scrollIntoViewIfNeeded()
+    // ---- Scope to the form (use a better hook if you have one) ----
+    const form = page.locator('form').first()
+    await expect(form).toBeVisible()
 
-    // Wait for any UI transitions to complete
-    await page.waitForTimeout(200) // optional, but helps flakiness
+    // ---- Email ----
+    // const emailInput = dashboardLocators.dashboardLocators.emailInputfield(page)
+    await form.getByPlaceholder('susan@example.com').click()
+    await form.getByPlaceholder('susan@example.com').fill(email)
 
-    // Click the dropdown
-    await dropdownTrigger.click()
+    // ---- Dropdown (robust) ----
+    const optionText = 'Bug/issue'
+    const optionRegex = /bug\s*\/\s*issue/i
 
-    // Step 2: Wait for the dropdown options to appear
-    const bugOption = page
-      .locator('div[role="option"]', { hasText: 'Bug/issue' })
-      .first() // Ensures we pick the first match
+    let combo = form
+      .getByRole('combobox', { name: /issue|type|category/i })
+      .first()
+    if ((await combo.count()) === 0) combo = form.getByRole('combobox').first()
+    if ((await combo.count()) === 0) {
+      // fallback to wrapper if no role=combobox is present
+      const wrapper = form.locator('.styled-select__input-container').first()
+      await wrapper.scrollIntoViewIfNeeded()
+      await wrapper.click()
+      combo = form.getByRole('combobox').first().or(wrapper)
+    }
 
-    await expect(bugOption).toBeVisible({ timeout: 5000 })
+    // Open menu
+    await combo.scrollIntoViewIfNeeded().catch(() => {})
+    await combo.click().catch(() => {})
+    await combo.focus().catch(() => {})
+    await page.keyboard.press('ArrowDown').catch(() => {})
+    await page.waitForTimeout(60)
 
-    // Click the option
-    await bugOption.click()
+    // If selection triggers network calls, start waiting BEFORE the click
+    const maybeWaitNetwork = page
+      .waitForLoadState('networkidle', { timeout: 3000 })
+      .catch(() => {})
 
-    // Step 3: Select "Bug/issue"
-    await bugOption.click()
+    // Click option (or fallback to type+Enter)
+    const listbox = page.getByRole('listbox')
+    if (await listbox.isVisible()) {
+      const opt = page.getByRole('option', { name: optionRegex })
+      await opt.scrollIntoViewIfNeeded()
+      await opt.click()
+    } else {
+      await combo.click().catch(() => {})
+      await combo.fill('').catch(() => {})
+      await combo.type('Bug')
+      await page.keyboard.press('Enter')
+    }
 
-    const field = dashboardLocators.whatCanWeHelpWithInputField(page)
+    // Explicitly close the menu so focus can move on
+    await page.keyboard.press('Escape').catch(() => {})
 
-    // Fill the input field
-    await dashboardLocators.whatCanWeHelpWithInputField(page).fill(textInForm)
-    // Assert the input has the correct value
-    await expect(field).toHaveValue(textInForm)
-    await dashboardLocators.submitButton(page).click()
+    // Wait for menu to go away OR overlay to clear
+    await Promise.race([
+      page
+        .getByRole('listbox')
+        .waitFor({ state: 'detached', timeout: 1500 })
+        .catch(() => {}),
+      page
+        .locator('[data-loading-overlay], .loading-overlay, [aria-busy="true"]')
+        .first()
+        .waitFor({ state: 'detached', timeout: 3000 })
+        .catch(() => {}),
+    ])
+
+    // If there were network calls, allow them to settle (won’t throw if none)
+    await maybeWaitNetwork
+
+    // Verify selection via a nearby display chip/label (more reliable than input value)
+    const selectionEcho = form.getByText(optionRegex).first()
+    await expect(selectionEcho).toBeVisible({ timeout: 2000 })
+
+    // Continue filling out the form
+    const whatCanWeHelpWithInput = form.getByPlaceholder(
+      'Describe your issue or'
+    )
+    await whatCanWeHelpWithInput.click()
+    await whatCanWeHelpWithInput.fill(textInForm)
+    await expect(whatCanWeHelpWithInput).toHaveValue(textInForm, {
+      timeout: 2000,
+    })
+
+    const submitBtn = dashboardLocators.submitButton(page)
+    await submitBtn.scrollIntoViewIfNeeded()
+    await submitBtn.click()
     // Assert that the form submission was successful
-    const successMessage = dashboardLocators.submissionSuccessMessage(page)
-    await expect(successMessage).toBeAttached() // make sure it’s in the DOM first
-    await successMessage.scrollIntoViewIfNeeded()
-    await expect(successMessage).toBeVisible()
+
+    await expect(
+      page.getByRole('heading', { name: 'Submission Received' })
+    ).toBeVisible({ timeout: 5000 })
+
+    await expect(page.getByText('Thank you for your submission!')).toBeVisible()
+
+    await expect(
+      page.getByText("We'll be in touch via email shortly.")
+    ).toBeVisible()
+
+    await expect(
+      page.getByRole('button', { name: 'Submit Another Request' })
+    ).toBeVisible()
   },
 }
