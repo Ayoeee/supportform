@@ -18,6 +18,11 @@ exports.dashboardLocators = {
   whatCanWeHelpWithInputField: (page) =>
     page.getByPlaceholder('Describe your issue or'),
   submitButton: (page) => page.getByRole('button', { name: 'Submit' }),
-  submissionSuccessMessage: (page) =>
-    page.getByText('Submission ReceivedThank you'),
+  submissionConfirmationText: (page) =>
+    page.getByRole('heading', { name: 'Submission Received' }),
+  thankYouText: (page) => page.getByText('Thank you for your submission!'),
+  followUpText: (page) =>
+    page.getByText("We'll be in touch via email shortly."),
+  submitAnotherRequestBtn: (page) =>
+    page.getByRole('button', { name: 'Submit Another Request' }),
 }

@@ -116,17 +116,13 @@ exports.fillformActions = {
     // Assert that the form submission was successful
 
     await expect(
-      page.getByRole('heading', { name: 'Submission Received' })
+      dashboardLocators.submissionConfirmationText(page)
     ).toBeVisible({ timeout: 5000 })
 
-    await expect(page.getByText('Thank you for your submission!')).toBeVisible()
+    await expect(dashboardLocators.thankYouText(page)).toBeVisible()
 
-    await expect(
-      page.getByText("We'll be in touch via email shortly.")
-    ).toBeVisible()
+    await expect(dashboardLocators.followUpText(page)).toBeVisible()
 
-    await expect(
-      page.getByRole('button', { name: 'Submit Another Request' })
-    ).toBeVisible()
+    await expect(dashboardLocators.submitAnotherRequestBtn(page)).toBeVisible()
   },
 }
