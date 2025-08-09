@@ -32,7 +32,7 @@ exports.fillformActions = {
     await expect(form).toBeVisible()
 
     // ---- Email ----
-    const emailInput = form.getByPlaceholder('susan@example.com')
+    const emailInput = dashboardLocators.emailInputfield(page)
     await emailInput.click()
     await emailInput.fill(email)
 
@@ -101,9 +101,8 @@ exports.fillformActions = {
     await expect(selectionEcho).toBeVisible({ timeout: 2000 })
 
     // Continue filling out the form
-    const whatCanWeHelpWithInput = form.getByPlaceholder(
-      'Describe your issue or'
-    )
+    const whatCanWeHelpWithInput =
+      dashboardLocators.whatCanWeHelpWithInputField(page)
     await whatCanWeHelpWithInput.click()
     await whatCanWeHelpWithInput.fill(textInForm)
     await expect(whatCanWeHelpWithInput).toHaveValue(textInForm, {

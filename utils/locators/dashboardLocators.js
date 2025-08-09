@@ -11,12 +11,13 @@ exports.dashboardLocators = {
   commonQuestionsLink: (page) =>
     page.getByRole('link', { name: 'Common Questions' }),
   adminToolsLink: (page) => page.getByRole('link', { name: 'Admin Tools' }),
-  emailInputfield: (page) => page.getByPlaceholder('susan@example.com'),
+  emailInputfield: (page) =>
+    page.locator('form').first().getByPlaceholder('susan@example.com'),
   supportRequestDropdown: (page) =>
     page.locator('.styled-select__input-container'),
   bugIssueRequest: (page) => page.getByRole('option', { name: 'Bug/issue' }),
   whatCanWeHelpWithInputField: (page) =>
-    page.getByPlaceholder('Describe your issue or'),
+    page.locator('form').first().getByPlaceholder('Describe your issue or'),
   submitButton: (page) => page.getByRole('button', { name: 'Submit' }),
   submissionConfirmationText: (page) =>
     page.getByRole('heading', { name: 'Submission Received' }),
