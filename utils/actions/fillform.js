@@ -2,7 +2,8 @@ const { dashboardLocators } = require('../locators/dashboardLocators')
 const { expect } = require('@playwright/test')
 const { execSync } = require('child_process')
 const email = 'automatedTest@test.com'
-const textInForm = 'This is an automated test for filling the support form written by Ayobami ©.';
+const textInForm =
+  'This is an automated test for filling the support form written by Ayobami ©.'
 
 exports.fillformActions = {
   async fillFormTests(page) {
@@ -31,9 +32,9 @@ exports.fillformActions = {
     await expect(form).toBeVisible()
 
     // ---- Email ----
-    // const emailInput = dashboardLocators.dashboardLocators.emailInputfield(page)
-    await form.getByPlaceholder('susan@example.com').click()
-    await form.getByPlaceholder('susan@example.com').fill(email)
+    const emailInput = form.getByPlaceholder('susan@example.com')
+    await emailInput.click()
+    await emailInput.fill(email)
 
     // ---- Dropdown (robust) ----
     const optionText = 'Bug/issue'
