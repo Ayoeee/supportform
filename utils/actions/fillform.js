@@ -2,7 +2,7 @@ const { dashboardLocators } = require('../locators/dashboardLocators')
 const { expect } = require('@playwright/test')
 const { execSync } = require('child_process')
 const email = 'automatedTest@test.com'
-const textInForm = 'This is an automated test for filling the support form.'
+const textInForm = 'This is an automated test for filling the support form written by Ayobami ©.';
 
 exports.fillformActions = {
   async fillFormTests(page) {
