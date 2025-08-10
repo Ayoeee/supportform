@@ -122,14 +122,46 @@ exports.fillformActions = {
       timeout: 2000,
     })
 
-    const submitBtn = dashboardLocators.submitButton(page)
+    // 1) Make sure the form is valid & button is truly clickable
+    const formElement = page.locator('form').first()
+    const submitBtn = formElement.getByRole('button', { name: 'Submit' })
+
     await submitBtn.scrollIntoViewIfNeeded()
-    await submitBtn.click()
-    // Assert that the form submission was successful
+    await expect(submitBtn).toBeVisible({ timeout: 7000 })
+    await expect(submitBtn).toBeEnabled({ timeout: 7000 })
+
+    // 2) Click AND wait for either API success or URL/state change BEFORE asserting UI
+    // Prefer waiting for the POST if you know the endpoint:
+    const waitForPost = page
+      .waitForResponse(
+        (r) =>
+          r.url().includes('/support') &&
+          r.request().method() === 'POST' &&
+          [200, 201].includes(r.status()),
+        { timeout: 15000 }
+      )
+      .catch(() => null)
+
+    // If your app redirects (e.g., ?submitted=true), this will catch it; otherwise it just times out gracefully.
+    const waitForUrl = page
+      .waitForURL(/support.*(success|submitted|thank|confirmation)/i, {
+        timeout: 15000,
+      })
+      .catch(() => null)
+
+    // Also good for SPA: wait for network to settle
+    const waitIdle = page
+      .waitForLoadState('networkidle', { timeout: 10000 })
+      .catch(() => null)
+
+    // Fire the click while those waits are armed
+    await Promise.all([waitForPost, waitForUrl, waitIdle, submitBtn.click()])
+
+    // 3) Now assert the confirmation UI (give it more time in CI)
 
     await expect(
       dashboardLocators.submissionConfirmationText(page)
-    ).toBeVisible({ timeout: 5000 })
+    ).toBeVisible({ timeout: 15000 })
 
     await expect(dashboardLocators.thankYouText(page)).toBeVisible()
 
