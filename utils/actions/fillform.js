@@ -122,40 +122,47 @@ exports.fillformActions = {
       timeout: 2000,
     })
 
-    // 1) Make sure the form is valid & button is truly clickable
-    const formElement = page.locator('form').first()
-    const submitBtn = formElement.getByRole('button', { name: 'Submit' })
+  // --- Submit with hard waits + diagnostics ---
+const formElement = page.locator('form').first();
+const submitBtn = formElement.getByRole('button', { name: 'Submit' });
 
-    await submitBtn.scrollIntoViewIfNeeded()
-    await expect(submitBtn).toBeVisible({ timeout: 7000 })
-    await expect(submitBtn).toBeEnabled({ timeout: 7000 })
+// Ensure button is actually usable (prevents silent no-ops)
+await submitBtn.scrollIntoViewIfNeeded();
+await expect(submitBtn).toBeVisible({ timeout: 7000 });
+await expect(submitBtn).toBeEnabled({ timeout: 7000 });
 
-    // 2) Click AND wait for either API success or URL/state change BEFORE asserting UI
-    // Prefer waiting for the POST if you know the endpoint:
-    const waitForPost = page
-      .waitForResponse(
-        (r) =>
-          r.url().includes('/support') &&
-          r.request().method() === 'POST' &&
-          [200, 201].includes(r.status()),
-        { timeout: 15000 }
-      )
-      .catch(() => null)
+// Arm response wait BEFORE clicking
+const postPromise = page.waitForResponse(async r => {
+  try {
+    // adjust the path to match your API (e.g., '/support' or '/support/requests')
+    return r.request().method() === 'POST' && /support/i.test(r.url());
+  } catch { return false; }
+}, { timeout: 15000 }).catch(() => null);
 
-    // If your app redirects (e.g., ?submitted=true), this will catch it; otherwise it just times out gracefully.
-    const waitForUrl = page
-      .waitForURL(/support.*(success|submitted|thank|confirmation)/i, {
-        timeout: 15000,
-      })
-      .catch(() => null)
+// Optional: URL change if your app redirects after submit
+const urlPromise = page.waitForURL(/(success|submitted|thank|confirm)/i, { timeout: 15000 }).catch(() => null);
 
-    // Also good for SPA: wait for network to settle
-    const waitIdle = page
-      .waitForLoadState('networkidle', { timeout: 10000 })
-      .catch(() => null)
+// Also allow SPA to settle
+const idlePromise = page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => null);
 
-    // Fire the click while those waits are armed
-    await Promise.all([waitForPost, waitForUrl, waitIdle, submitBtn.click()])
+// Click submit while waits are armed
+await Promise.all([
+  postPromise,
+  urlPromise,
+  idlePromise,
+  submitBtn.click()
+]);
+
+// Diagnose the POST (why CI can differ from local)
+const resp = await postPromise;
+if (!resp) {
+  console.warn('⚠️ No POST response intercepted (possible CORS/block/bot).');
+} else if (resp.status() < 200 || resp.status() >= 300) {
+  const body = await resp.text().catch(() => '<unreadable>');
+  console.error(`❌ Submit POST failed: ${resp.status()} ${resp.url()}\nBody:\n${body}`);
+  // Optional: fail early with clearer error
+  throw new Error(`Submit failed in CI: HTTP ${resp.status()}`);
+}
 
     // 3) Now assert the confirmation UI (give it more time in CI)
 
