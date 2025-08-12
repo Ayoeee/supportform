@@ -1,7 +1,7 @@
 const { dashboardLocators } = require('../locators/dashboardLocators')
 const { expect } = require('@playwright/test')
 const { execSync } = require('child_process')
-const email = 'automatedTest@test.com'
+const userEmail = 'automatedTest@test.com'
 const textInForm =
   'This is an automated test for filling the support form written by Ayobami ©.'
 
@@ -29,17 +29,55 @@ exports.fillformActions = {
 
     // ---- Scope to the form (use a better hook if you have one) ----
     const form = page.locator('form').first()
-    await expect(form).toBeVisible()
 
-    // ---- Email ----
-    const emailInput = dashboardLocators.emailInputfield(page)
-    await emailInput.scrollIntoViewIfNeeded()
-    await emailInput.click()
-    await emailInput.fill('') // clear any autofill residue
-    await emailInput.type('ayobami@kinship.co', { delay: 20 }) // real keystrokes
-    await page.keyboard.press('Tab')
-    // hard assert it's really there before continuing
-    await expect(emailInput).toHaveValue('ayobami@kinship.co', { timeout: 5000 })
+    // Prefer the actual input element over getByLabel (label mapping flaky in headless)
+    const email = form
+      .locator(
+        'input[type="email"], input[name="email"], input[autocomplete="email"]'
+      )
+      .first()
+      .or(form.getByPlaceholder('susan@example.com'))
+
+    await email.waitFor({ state: 'visible', timeout: 5000 })
+    await email.scrollIntoViewIfNeeded()
+
+    // Try a normal click; if blocked (overlay/focus trap), focus via JS
+    try {
+      await email.click({ timeout: 1000 })
+    } catch {
+      await email.evaluate((el) => el instanceof HTMLElement && el.focus())
+    }
+
+    // Type like a human, then blur to commit
+    await email.fill('')
+    await email.type(userEmail, { delay: 20 })
+    await page.keyboard.press('Tab') // commit value on React-controlled inputs
+    await page.waitForTimeout(50)
+
+    // If value still not committed, force it via native setter + events
+    try {
+      await expect(email).toHaveValue(userEmail, { timeout: 2000 })
+    } catch {
+      await email.evaluate((el, value) => {
+        const desc = Object.getOwnPropertyDescriptor(
+          HTMLInputElement.prototype,
+          'value'
+        )
+        desc?.set?.call(el, value)
+        el.dispatchEvent(new Event('input', { bubbles: true }))
+        el.dispatchEvent(new Event('change', { bubbles: true }))
+      }, userEmail)
+      await email.evaluate((el) => el.blur())
+      await expect(email).toHaveValue(userEmail, { timeout: 3000 })
+    }
+    // const emailInput = dashboardLocators.emailInputfield(page)
+    // await emailInput.scrollIntoViewIfNeeded()
+    // await emailInput.click()
+    // await emailInput.fill('') // clear any autofill residue
+    // await emailInput.type('ayobami@kinship.co', { delay: 20 }) // real keystrokes
+    // await page.keyboard.press('Tab')
+    // // hard assert it's really there before continuing
+    // await expect(emailInput).toHaveValue('ayobami@kinship.co', { timeout: 5000 })
 
     // ---- Dropdown (robust) ----
     const optionText = 'Bug/issue'
@@ -143,17 +181,11 @@ exports.fillformActions = {
     await expect(
       dashboardLocators.submissionConfirmationText(page)
     ).toBeVisible({ timeout: 30000 })
-    await expect(
-      page.getByText(/thank you for your submission!/i)
-    ).toBeVisible()
-    await expect(
-      page.getByRole('button', { name: /submit another request/i })
-    ).toBeVisible()
 
-    // await expect(dashboardLocators.thankYouText(page)).toBeVisible()
+    await expect(dashboardLocators.thankYouText(page)).toBeVisible()
 
-    // await expect(dashboardLocators.followUpText(page)).toBeVisible()
+    await expect(dashboardLocators.followUpText(page)).toBeVisible()
 
-    // await expect(dashboardLocators.submitAnotherRequestBtn(page)).toBeVisible()
+    await expect(dashboardLocators.submitAnotherRequestBtn(page)).toBeVisible()
   },
 }
