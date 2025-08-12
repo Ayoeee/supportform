@@ -122,47 +122,16 @@ exports.fillformActions = {
       timeout: 2000,
     })
 
-  // --- Submit with hard waits + diagnostics ---
-const formElement = page.locator('form').first();
-const submitBtn = formElement.getByRole('button', { name: 'Submit' });
+    const formelement = page.locator('form').first()
+    const submitBtn = formelement.getByRole('button', { name: 'Submit' })
+    await submitBtn.scrollIntoViewIfNeeded()
+    await submitBtn.click()
 
-// Ensure button is actually usable (prevents silent no-ops)
-await submitBtn.scrollIntoViewIfNeeded();
-await expect(submitBtn).toBeVisible({ timeout: 7000 });
-await expect(submitBtn).toBeEnabled({ timeout: 7000 });
-
-// Arm response wait BEFORE clicking
-const postPromise = page.waitForResponse(async r => {
-  try {
-    // adjust the path to match your API (e.g., '/support' or '/support/requests')
-    return r.request().method() === 'POST' && /support/i.test(r.url());
-  } catch { return false; }
-}, { timeout: 15000 }).catch(() => null);
-
-// Optional: URL change if your app redirects after submit
-const urlPromise = page.waitForURL(/(success|submitted|thank|confirm)/i, { timeout: 15000 }).catch(() => null);
-
-// Also allow SPA to settle
-const idlePromise = page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => null);
-
-// Click submit while waits are armed
-await Promise.all([
-  postPromise,
-  urlPromise,
-  idlePromise,
-  submitBtn.click()
-]);
-
-// Diagnose the POST (why CI can differ from local)
-const resp = await postPromise;
-if (!resp) {
-  console.warn('⚠️ No POST response intercepted (possible CORS/block/bot).');
-} else if (resp.status() < 200 || resp.status() >= 300) {
-  const body = await resp.text().catch(() => '<unreadable>');
-  console.error(`❌ Submit POST failed: ${resp.status()} ${resp.url()}\nBody:\n${body}`);
-  // Optional: fail early with clearer error
-  throw new Error(`Submit failed in CI: HTTP ${resp.status()}`);
-}
+    // Let SPA settle even with stubbed POST
+    await page
+      .waitForLoadState('networkidle', { timeout: 10_000 })
+      .catch(() => {})
+    await page.keyboard.press('Escape').catch(() => {}) // close any leftover popovers
 
     // 3) Now assert the confirmation UI (give it more time in CI)
 

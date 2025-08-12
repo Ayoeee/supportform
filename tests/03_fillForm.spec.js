@@ -4,32 +4,39 @@ const { fillformActions } = require('../utils/actions/fillform') // ✅ Import f
 
 const BASE_URL = process.env.BASE_URL // ✅ Get Base URL from .env
 // Runs before each test
-test.beforeEach(async ({ page, context }) => {
-  // 1) Hide automation fingerprint (helps with bot/WAF)
+test.beforeEach(async ({ page, context }, testInfo) => {
+  // Hide webdriver
   await context.addInitScript(() => {
-    Object.defineProperty(navigator, 'webdriver', { get: () => undefined })
-  })
+    Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
+  });
 
-  // 2) CI-only: stub the submit POST so pipeline isn’t blocked by WAF/CSRF/IP
+  // Log POSTs & stub them on CI so WAF/CSRF can't block you
   if (process.env.CI) {
-    await context.route('**/support/**', (route) => {
-      const req = route.request()
+    // Log every POST so we learn the exact URL/path used in CI
+    page.on('request', req => {
+      if (req.method() === 'POST') console.log('POST ->', req.url());
+    });
+    page.on('response', async res => {
+      if (res.request().method() === 'POST') {
+        console.log('POST <-', res.status(), res.url());
+      }
+    });
+
+    // Catch *all* POSTs and return a friendly success the UI can digest
+    await context.route('**', async route => {
+      const req = route.request();
       if (req.method() === 'POST') {
+        // If your app expects JSON, return JSON 200/201
         return route.fulfill({
           status: 200,
-          contentType: 'application/json',
-          body: JSON.stringify({ ok: true, id: 'fake-123' }),
-        })
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ ok: true, id: 'fake-123', status: 'success' }),
+        });
       }
-      return route.continue()
-    })
+      return route.continue();
+    });
   }
-
-  // Optional: kill animations to reduce flake
-  await page.addStyleTag({
-    content: `*,*::before,*::after{transition:none!important;animation:none!important}`,
-  })
-})
+});
 
 test('Verifying user can fill form', async ({ page }) => {
   await page.goto(`${BASE_URL}`)

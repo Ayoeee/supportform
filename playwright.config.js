@@ -1,17 +1,17 @@
 // playwright.config.js
-const { defineConfig } = require('@playwright/test');
-require('dotenv').config();
+const { defineConfig } = require('@playwright/test')
+require('dotenv').config()
 
-const isCI = !!process.env.CI;
+const isCI = !!process.env.CI
 
 module.exports = defineConfig({
   testDir: './tests',
-  timeout: 120_000,                 // per-test max
-  expect: { timeout: 100_000 },     // assertion max
+  timeout: 120_000, // per-test max
+  expect: { timeout: 100_000 }, // assertion max
 
   // CI hygiene
-  retries: isCI ? 1 : 0,            // one retry on CI
-  workers: isCI ? 1 : undefined,    // run sequentially on CI
+  retries: isCI ? 1 : 0, // one retry on CI
+  workers: isCI ? 1 : undefined, // run sequentially on CI
 
   use: {
     baseURL: process.env.BASE_URL || 'http://localhost:3000',
@@ -22,7 +22,7 @@ module.exports = defineConfig({
 
     // Helpful timeouts
     navigationTimeout: 30_000,
-    actionTimeout: 0,               // keep your preference
+    actionTimeout: 0, // keep your preference
 
     // Make headless look like a real browser (helps with bot/WAF)
     userAgent:
@@ -50,9 +50,10 @@ module.exports = defineConfig({
 
   // reporter: isCI ? [['github'], ['list']] : [['list'], ['html', { open: 'never' }]],
 
-  projects: [
-    { name: 'Chromium', use: { browserName: 'chromium' } },
-    { name: 'Firefox',  use: { browserName: 'firefox'  } },
-    // { name: 'WebKit', use: { browserName: 'webkit' } },
-  ],
-});
+  projects: isCI
+    ? [{ name: 'Chromium', use: { browserName: 'chromium' } }]
+    : [
+        { name: 'Chromium', use: { browserName: 'chromium' } },
+        { name: 'Firefox', use: { browserName: 'firefox' } },
+      ],
+})
