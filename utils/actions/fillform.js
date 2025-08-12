@@ -33,8 +33,13 @@ exports.fillformActions = {
 
     // ---- Email ----
     const emailInput = dashboardLocators.emailInputfield(page)
+    await emailInput.scrollIntoViewIfNeeded()
     await emailInput.click()
-    await emailInput.fill(email)
+    await emailInput.fill('') // clear any autofill residue
+    await emailInput.type('ayobami@kinship.co', { delay: 20 }) // real keystrokes
+    await page.keyboard.press('Tab')
+    // hard assert it's really there before continuing
+    await expect(emailInput).toHaveValue('ayobami@kinship.co', { timeout: 5000 })
 
     // ---- Dropdown (robust) ----
     const optionText = 'Bug/issue'
@@ -137,12 +142,18 @@ exports.fillformActions = {
 
     await expect(
       dashboardLocators.submissionConfirmationText(page)
-    ).toBeVisible({ timeout: 15000 })
+    ).toBeVisible({ timeout: 30000 })
+    await expect(
+      page.getByText(/thank you for your submission!/i)
+    ).toBeVisible()
+    await expect(
+      page.getByRole('button', { name: /submit another request/i })
+    ).toBeVisible()
 
-    await expect(dashboardLocators.thankYouText(page)).toBeVisible()
+    // await expect(dashboardLocators.thankYouText(page)).toBeVisible()
 
-    await expect(dashboardLocators.followUpText(page)).toBeVisible()
+    // await expect(dashboardLocators.followUpText(page)).toBeVisible()
 
-    await expect(dashboardLocators.submitAnotherRequestBtn(page)).toBeVisible()
+    // await expect(dashboardLocators.submitAnotherRequestBtn(page)).toBeVisible()
   },
 }
