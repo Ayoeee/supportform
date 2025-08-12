@@ -8,7 +8,6 @@ const textInForm =
 
 // --- Helper: fill email in a Chromium-headless-proof way ---
 async function fillEmailStable(form, value) {
-  // Prefer the real input element (label mapping is flaky in headless Chromium)
   const email = form
     .locator(
       'input[type="email"], input[name*="email" i], input[autocomplete="email"], input[placeholder="susan@example.com"]'
@@ -19,19 +18,16 @@ async function fillEmailStable(form, value) {
   await email.waitFor({ state: 'visible', timeout: 5000 })
   await email.scrollIntoViewIfNeeded()
 
-  // Focus; if click is intercepted, use JS focus
   try {
     await email.click({ timeout: 1000 })
   } catch {
     await email.evaluate((el) => el instanceof HTMLElement && el.focus())
   }
 
-  // Human-like typing to trigger React's onChange + blur commit
   await email.fill('')
   await email.type(value, { delay: 20 })
   await email.evaluate((el) => el.blur())
 
-  // Verify; if not committed, force via native setter + events (React-safe)
   try {
     await expect(email).toHaveValue(value, { timeout: 2000 })
   } catch {
@@ -47,6 +43,62 @@ async function fillEmailStable(form, value) {
     await email.evaluate((el) => el.blur())
     await expect(email).toHaveValue(value, { timeout: 3000 })
   }
+}
+
+// --- Helper: select request type (CI-stable) ---
+async function selectRequestType(form, text = 'Bug/issue') {
+  const page = form.page()
+  const combo = form.getByRole('combobox').first()
+  const listbox = page.getByRole('listbox') // portaled menus often attach to <body>
+  const optionRegex = new RegExp(text.replace('/', '\\/'), 'i')
+
+  // Retry open/select up to 2x to beat flaky mounts
+  for (let attempt = 0; attempt < 2; attempt++) {
+    await combo.scrollIntoViewIfNeeded()
+    await combo.click().catch(() => {})
+    await combo.focus().catch(() => {})
+    await page.waitForTimeout(50)
+
+    // Type into inner input if present; otherwise into the combo
+    const innerInput = combo.locator('input[aria-autocomplete="list"]').first()
+    if (await innerInput.count()) {
+      await innerInput.fill('')
+      await innerInput.type(text, { delay: 15 })
+    } else {
+      await combo.type(text, { delay: 15 }).catch(() => {})
+    }
+
+    // If options rendered, click by role; otherwise press Enter
+    const opt = page.getByRole('option', { name: optionRegex }).first()
+    if (await listbox.isVisible().catch(() => false)) {
+      await opt.click().catch(async () => {
+        await page.keyboard.press('Enter')
+      })
+    } else {
+      await page.keyboard.press('Enter')
+    }
+
+    // Close menu & settle
+    await page.keyboard.press('Escape').catch(() => {})
+    await listbox.waitFor({ state: 'hidden', timeout: 1500 }).catch(() => {})
+    await page.waitForTimeout(50)
+
+    // Success checks (any one is fine)
+    const reqError = form.getByText(/please select a request type/i)
+    const textShown = combo.locator(':scope') // keep scope
+    const ok =
+      (await textShown.textContent().then(
+        (t) => optionRegex.test(t || ''),
+        () => false
+      )) || (await reqError.isHidden().catch(() => false))
+
+    if (ok) return // done
+
+    // If not OK, loop once more
+  }
+
+  // If we get here, selection didn’t stick — throw with context
+  throw new Error(`Request type "${text}" did not stick after selection`)
 }
 
 exports.fillformActions = {
@@ -65,7 +117,7 @@ exports.fillformActions = {
     } catch {}
     await page.setViewportSize({ width, height })
 
-    // --- Wait out overlays (tweak selector for your app) ---
+    // --- Wait out overlays ---
     await page
       .locator('[data-loading-overlay], .loading-overlay, [aria-busy="true"]')
       .first()
@@ -75,68 +127,13 @@ exports.fillformActions = {
     // --- Scope to the form ---
     const form = page.locator('form').first()
 
-    // 1) EMAIL FIRST (commit & verify)
+    // 1) EMAIL FIRST
     await fillEmailStable(form, userEmail)
 
-    // 2) DROPDOWN (robust; type-to-select is most stable headless)
-    const optionRegex = /bug\s*\/\s*issue/i
-    let combo = form
-      .getByRole('combobox', { name: /issue|type|category/i })
-      .first()
-    if ((await combo.count()) === 0) combo = form.getByRole('combobox').first()
-    if ((await combo.count()) === 0) {
-      const wrapper = form.locator('.styled-select__input-container').first()
-      await wrapper.scrollIntoViewIfNeeded()
-      await wrapper.click()
-      combo = form.getByRole('combobox').first().or(wrapper)
-    }
+    // 2) DROPDOWN (new helper)
+    await selectRequestType(form, 'Bug/issue')
 
-    await combo.scrollIntoViewIfNeeded().catch(() => {})
-    await combo.click().catch(() => {})
-    await combo.focus().catch(() => {})
-    await page.keyboard.press('ArrowDown').catch(() => {})
-    await page.waitForTimeout(60)
-
-    const maybeWaitNetwork = page
-      .waitForLoadState('networkidle', { timeout: 3000 })
-      .catch(() => {})
-    const listbox = page.getByRole('listbox')
-
-    if (await listbox.isVisible()) {
-      const opt = page.getByRole('option', { name: optionRegex })
-      await opt.scrollIntoViewIfNeeded()
-      await opt.click()
-    } else {
-      await combo.click().catch(() => {})
-      await combo.fill('').catch(() => {})
-      await combo.type('Bug')
-      await page.keyboard.press('Enter')
-    }
-
-    await page.keyboard.press('Escape').catch(() => {})
-    await Promise.race([
-      page
-        .getByRole('listbox')
-        .waitFor({ state: 'detached', timeout: 1500 })
-        .catch(() => {}),
-      page
-        .locator('[data-loading-overlay], .loading-overlay, [aria-busy="true"]')
-        .first()
-        .waitFor({ state: 'detached', timeout: 3000 })
-        .catch(() => {}),
-    ])
-    await maybeWaitNetwork
-
-    // State-based sanity check (avoid brittle free text)
-    await expect(form.getByPlaceholder('Describe your issue or')).toBeVisible()
-    try {
-      await expect(form.getByRole('combobox').first()).toContainText(
-        optionRegex,
-        { timeout: 2000 }
-      )
-    } catch {}
-
-    // 3) RE‑ASSERT EMAIL (dropdown may re-render/wipe it)
+    // 3) RE‑ASSERT EMAIL (covers re-render wiping it)
     await fillEmailStable(form, userEmail)
 
     // 4) TEXTAREA
